@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dapr-app2
+  namespace: ns2
+  labels:
+    app: dapr-app2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dapr-app2
+  template:
+    metadata:
+      labels:
+        app: dapr-app2
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "dapr-app2"
+        dapr.io/app-port: "3334"
+    spec:
+      containers:
+      - name: dapr-app2
+        image: actor-server1:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3334
+        env:
+        - name: PORT
+          value: "3334"
+        - name: NS
+          value: "ns2"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dapr-app2
+  namespace:  ns2
+spec:
+  selector:
+    app: dapr-app2
+  ports:
+  - protocol: TCP
+    port: 3334
+    targetPort: 3334
+    nodePort: 30001
+  type: NodePort
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dapr-dev-redis
+  namespace: ns2  # Ensure this matches your application's namespace
+type: Opaque
+data:
+  redis-password: cGFzc3dvcmQ=
+---
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore2
+  namespace: ns2
+spec:
+  type: state.redis
+  version: v1
+  metadata:
+  - name: redisHost
+    value: redis-master.default.svc.cluster.local:6379
+  - name: redisPassword
+    value: p3OyWHAgFq
+  - name: actorStateStore
+    value: "true"
+  - name: redisDB
+    value: "2"
